@@ -46,7 +46,6 @@ export interface ApiResponse<T = unknown> {
 export interface LoginResponse {
   user: User;
   accessToken: string;
-  refreshToken: string;
 }
 
 export interface RegisterResponse {
@@ -94,10 +93,6 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
 }
 
 // Booking request types

@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
@@ -13,8 +13,8 @@ export const useLogin = () => {
     mutationFn: (data: LoginRequest) => authApi.login(data),
     onSuccess: (response) => {
       if (response.success && response.data) {
-        const { user, accessToken, refreshToken } = response.data;
-        login(user, accessToken, refreshToken);
+        const { user, accessToken } = response.data;
+        login(user, accessToken);
         toast.success('Login successful!');
         navigate('/');
       } else {
@@ -51,10 +51,26 @@ export const useRegister = () => {
 export const useLogout = () => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const queryClient = useQueryClient();
 
-  return () => {
-    logout();
-    toast.success('Logged out successfully');
-    navigate('/login');
+  const cleanup = () => {
+    logout();                         // מנקה state
+    queryClient.clear();              // מנקה כל cache של react-query
+    navigate('/login', { replace: true });
   };
+
+  return useMutation({
+    mutationFn: () => authApi.logout(),
+
+    onSuccess: () => {
+      toast.success('Logged out successfully');
+      cleanup();
+    },
+
+    onError: (error: any) => {
+      console.error('Logout failed on server:', error);
+      toast.error('Logged out locally (server unavailable)');
+      cleanup();
+    },
+  });
 };

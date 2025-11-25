@@ -2,19 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { roomApi } from '../services/api';
 import type { RoomSearchFilters } from '../types';
 
-export const useRooms = () => {
-  return useQuery({
-    queryKey: ['rooms'],
-    queryFn: async () => {
-      const response = await roomApi.getRooms();
-      if (!response.success || !response.data) {
-        throw new Error(response.error?.message || 'Failed to fetch rooms');
-      }
-      return response.data.rooms;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
 
 export const useRoomSearch = (filters: RoomSearchFilters) => {
   return useQuery({
