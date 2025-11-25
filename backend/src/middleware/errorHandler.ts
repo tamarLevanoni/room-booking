@@ -1,18 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-
-/**
- * Custom Error Interface
- * Extends Error with optional status code
- */
-interface AppError extends Error {
-  status?: number;
-}
+import { HttpError } from '../utils/HttpError';
 
 /**
  * Global Error Handler Middleware
  *
  * Handles all errors thrown in the application:
+ * - HttpError (custom errors with status codes)
  * - Validation errors (Zod)
  * - Authentication errors (401)
  * - Not found errors (404)
@@ -23,18 +17,22 @@ interface AppError extends Error {
  * Logs errors to console using console.error
  */
 export const errorHandler = (
-  err: AppError | ZodError,
+  err: Error | HttpError | ZodError,
   req: Request,
   res: Response,
   _next: NextFunction
 ): void => {
-  // Log error to console
-  console.error('Error occurred:', {
-    path: req.path,
-    method: req.method,
-    error: err.message,
-    stack: err.stack,
-  });
+  // Log error to console (only operational errors in production)
+  const isOperational = err instanceof HttpError ? err.isOperational : false;
+
+  if (process.env.NODE_ENV !== 'production' || !isOperational) {
+    console.error('Error occurred:', {
+      path: req.path,
+      method: req.method,
+      error: err.message,
+      stack: err.stack,
+    });
+  }
 
   // Handle Zod validation errors
   if (err instanceof ZodError) {
@@ -53,50 +51,56 @@ export const errorHandler = (
     return;
   }
 
-  // Handle errors with status codes
-  const statusCode = err.status || 500;
-  const message = err.message || 'Internal server error';
-
-  // Determine error type based on status code
-  let errorType = 'Internal Server Error';
-
-  switch (statusCode) {
-    case 400:
-      errorType = 'Bad Request';
-      break;
-    case 401:
-      errorType = 'Unauthorized';
-      break;
-    case 403:
-      errorType = 'Forbidden';
-      break;
-    case 404:
-      errorType = 'Not Found';
-      break;
-    case 409:
-      errorType = 'Conflict';
-      break;
-    case 422:
-      errorType = 'Unprocessable Entity';
-      break;
-    case 429:
-      errorType = 'Too Many Requests';
-      break;
-    case 500:
-    default:
-      errorType = 'Internal Server Error';
-      break;
+  // Handle HttpError instances
+  if (err instanceof HttpError) {
+    res.status(err.status).json({
+      success: false,
+      error: {
+        message: err.message,
+        type: getErrorType(err.status),
+      },
+    });
+    return;
   }
+
+  // Handle generic errors with status codes (backward compatibility)
+  const statusCode = (err as any).statusCode || (err as any).status || 500;
+  const message = err.message || 'Internal server error';
 
   // Send error response
   res.status(statusCode).json({
     success: false,
     error: {
       message: message,
-      type: errorType,
+      type: getErrorType(statusCode),
     },
   });
 };
+
+/**
+ * Helper function to get error type from status code
+ */
+function getErrorType(statusCode: number): string {
+  switch (statusCode) {
+    case 400:
+      return 'Bad Request';
+    case 401:
+      return 'Unauthorized';
+    case 403:
+      return 'Forbidden';
+    case 404:
+      return 'Not Found';
+    case 409:
+      return 'Conflict';
+    case 422:
+      return 'Unprocessable Entity';
+    case 429:
+      return 'Too Many Requests';
+    case 500:
+    default:
+      return 'Internal Server Error';
+  }
+}
 
 /**
  * 404 Not Found Handler

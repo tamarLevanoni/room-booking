@@ -10,41 +10,7 @@ import { IBooking } from '../types';
  * Implements atomic booking creation and availability checks per spec sections 2.2, 2.3, and 2.6.
  */
 export class BookingService {
-  /**
-   * Check if a room is available for the specified date range
-   *
-   * @param roomId - Room's ObjectId as string
-   * @param startDate - Booking start date
-   * @param endDate - Booking end date
-   * @returns true if room is available, false otherwise
-   * @throws Error with message if validation fails (400)
-   *
-   * Validation:
-   * - startDate must be < endDate
-   *
-   * Per spec section 2.3: Check for overlapping bookings with status 'CONFIRMED'
-   */
-  async checkAvailability(
-    roomId: string,
-    startDate: Date,
-    endDate: Date
-  ): Promise<boolean> {
-    // Validate dates
-    if (startDate >= endDate) {
-      const error = new Error('startDate must be before endDate');
-      (error as any).statusCode = 400;
-      throw error;
-    }
-
-    // Check for overlapping bookings
-    const overlappingBookings = await bookingRepository.findOverlapping(
-      roomId,
-      startDate,
-      endDate
-    );
-
-    return overlappingBookings.length === 0;
-  }
+  
 
   /**
    * Create a new booking atomically
@@ -91,10 +57,10 @@ export class BookingService {
       throw error;
     }
 
-    // Create booking atomically
-    // This operation checks for conflicts and creates the booking in a single atomic operation
-    // If another request creates a conflicting booking between our check and insert, this will return null
-    const booking = await bookingRepository.createAtomic(
+    // Create booking using transaction
+    // This operation checks for conflicts and creates the booking in a single atomic transaction
+    // If another request creates a conflicting booking concurrently, this will return null
+    const booking = await bookingRepository.createBooking(
       userId,
       roomId,
       startDate,
@@ -132,13 +98,13 @@ export class BookingService {
    * @private
    *
    * Clears:
-   * - 'rooms:all' - list of all rooms
+   * - 'rooms:all*' - all room list caches (including paginated)
    * - 'room:{roomId}' - specific room details
    */
   private async invalidateRoomCache(roomId: string): Promise<void> {
     try {
-      // Clear all rooms list cache
-      await cacheHelper.del('rooms:all');
+      // Clear all rooms list caches (including paginated variants)
+      await cacheHelper.clear('rooms:all*');
 
       // Clear specific room cache
       await cacheHelper.del(`room:${roomId}`);

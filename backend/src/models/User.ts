@@ -34,10 +34,6 @@ const userSchema = new Schema<IUser>(
   }
 );
 
-// Index: email (unique) - automatically created by unique: true in schema
-// Additional explicit index for clarity
-userSchema.index({ email: 1 }, { unique: true });
-
 /**
  * User Model
  */

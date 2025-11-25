@@ -1,6 +1,7 @@
 import { Booking } from '../models/Booking';
 import { IBooking } from '../types';
 import { Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 /**
  * BookingRepository
@@ -33,59 +34,71 @@ export class BookingRepository {
   }
 
   /**
-   * Create a booking atomically using findOneAndUpdate with upsert
-   * This prevents race conditions by checking for conflicts and inserting in a single atomic operation
+   * Create a booking using MongoDB transactions
+   * This prevents race conditions by checking and inserting within a single transaction
    *
    * @param userId - User's ObjectId as string
    * @param roomId - Room's ObjectId as string
    * @param startDate - Booking start date
    * @param endDate - Booking end date
    * @returns Created booking document or null if conflict exists
+   * @throws Error if transaction fails for reasons other than conflict
    *
    * Implementation follows spec section 2.6:
-   * - Uses findOneAndUpdate with upsert: true
-   * - Query checks for NO overlapping bookings using $nor
-   * - Uses $setOnInsert to only set data if new document is created
-   * - MongoDB guarantees atomicity - only one operation succeeds when multiple requests overlap
+   * - Uses MongoDB transactions for ACID guarantees
+   * - Checks for overlapping bookings within transaction
+   * - Creates booking if no overlap found
+   * - Returns null if conflict detected
    */
-  async createAtomic(
+  async createBooking(
     userId: string,
     roomId: string,
     startDate: Date,
     endDate: Date
   ): Promise<IBooking | null> {
+    const session = await mongoose.startSession();
+
     try {
-      const result = await Booking.findOneAndUpdate(
-        {
+      const result = await session.withTransaction(async () => {
+        // Check for overlapping bookings within transaction
+        const overlapping = await Booking.find({
           roomId: new Types.ObjectId(roomId),
           status: 'CONFIRMED',
-          // Check that NO overlapping booking exists
-          $nor: [{ startDate: { $lt: endDate }, endDate: { $gt: startDate } }],
-        },
-        {
-          $setOnInsert: {
-            userId: new Types.ObjectId(userId),
-            roomId: new Types.ObjectId(roomId),
-            startDate,
-            endDate,
-            status: 'CONFIRMED',
-            version: 1,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        },
-        {
-          upsert: true,
-          new: true,
-          setDefaultsOnInsert: true,
-        }
-      ).exec();
+          $or: [
+            { startDate: { $lt: endDate }, endDate: { $gt: startDate } }
+          ],
+        }).session(session);
 
+        if (overlapping.length > 0) {
+          // Conflict detected
+          return null;
+        }
+
+        // Create booking within transaction
+        const [booking] = await Booking.create([{
+          userId: new Types.ObjectId(userId),
+          roomId: new Types.ObjectId(roomId),
+          startDate,
+          endDate,
+          status: 'CONFIRMED',
+          version: 1,
+        }], { session });
+
+        return booking;
+      });
+
+      // If withTransaction returns undefined (not null), transaction failed
+      if (result === undefined) {
+        throw new Error('Transaction failed to complete');
+      }
+
+      // result is either IBooking or null (conflict)
       return result;
     } catch (error) {
-      // If upsert fails (e.g., due to unique constraint), return null
-      // This indicates a conflict exists
-      return null;
+      // Re-throw the error to be handled by the service layer
+      throw error;
+    } finally {
+      session.endSession();
     }
   }
 

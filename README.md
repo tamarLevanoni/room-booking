@@ -150,11 +150,16 @@ For detailed API documentation, see [backend/README.md](backend/README.md).
 
 ### Making Code Changes
 
-1. **Backend changes**: Hot reload is enabled via volume mounting
+1. **Backend changes**: 
    ```bash
    # Edit files in ./backend/src/
-   # Changes are reflected immediately
-   docker-compose logs -f backend
+   # Rebuild the backend image so changes take effect
+   docker compose build --no-cache backend
+   docker compose up -d backend
+
+   # View backend logs
+   docker compose logs -f backend
+
    ```
 
 2. **Frontend changes**: Rebuild required

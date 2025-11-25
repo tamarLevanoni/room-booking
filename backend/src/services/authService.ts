@@ -1,6 +1,8 @@
+import '../config'; // Load env vars FIRST
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { userRepository } from '../repositories';
+import { HttpErrors } from '../utils/HttpError';
 
 /**
  * JWT Payload Interface
@@ -56,13 +58,19 @@ export class AuthService {
     // Load configuration from environment variables
     this.bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
     this.jwtSecret = process.env.JWT_SECRET || '';
-    this.jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || this.jwtSecret;
+    this.jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || '';
     this.accessTokenExpiry = process.env.JWT_ACCESS_TOKEN_EXPIRY || '15m';
     this.refreshTokenExpiry = process.env.JWT_REFRESH_TOKEN_EXPIRY || '7d';
 
     // Validate required secrets
     if (!this.jwtSecret) {
       throw new Error('JWT_SECRET is required in environment variables');
+    }
+    if (!this.jwtRefreshSecret) {
+      throw new Error('JWT_REFRESH_SECRET is required in environment variables');
+    }
+    if (this.jwtSecret === this.jwtRefreshSecret) {
+      throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be different for security');
     }
   }
 
@@ -83,9 +91,7 @@ export class AuthService {
     // Check if user already exists
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
-      const error = new Error('Email already registered');
-      (error as any).status = 409;
-      throw error;
+      throw HttpErrors.conflict('Email already registered');
     }
 
     // Hash password with bcrypt
@@ -120,17 +126,13 @@ export class AuthService {
     // Find user by email
     const user = await userRepository.findByEmail(email);
     if (!user) {
-      const error = new Error('Invalid credentials');
-      (error as any).status = 401;
-      throw error;
+      throw HttpErrors.unauthorized('Invalid credentials');
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      const error = new Error('Invalid credentials');
-      (error as any).status = 401;
-      throw error;
+      throw HttpErrors.unauthorized('Invalid credentials');
     }
 
     // Generate tokens
@@ -169,23 +171,17 @@ export class AuthService {
       // Verify user still exists
       const user = await userRepository.findById(decoded.userId);
       if (!user) {
-        const error = new Error('Invalid refresh token');
-        (error as any).status = 401;
-        throw error;
+        throw HttpErrors.unauthorized('Invalid refresh token');
       }
 
       // Generate new access token
       return this.generateAccessToken(decoded.userId);
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
-        const newError = new Error('Invalid refresh token');
-        (newError as any).status = 401;
-        throw newError;
+        throw HttpErrors.unauthorized('Invalid refresh token');
       }
       if (error instanceof jwt.TokenExpiredError) {
-        const newError = new Error('Refresh token expired');
-        (newError as any).status = 401;
-        throw newError;
+        throw HttpErrors.unauthorized('Refresh token expired');
       }
       throw error;
     }
@@ -204,14 +200,10 @@ export class AuthService {
       return decoded;
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
-        const newError = new Error('Invalid access token');
-        (newError as any).status = 401;
-        throw newError;
+        throw HttpErrors.unauthorized('Invalid access token');
       }
       if (error instanceof jwt.TokenExpiredError) {
-        const newError = new Error('Access token expired');
-        (newError as any).status = 401;
-        throw newError;
+        throw HttpErrors.unauthorized('Access token expired');
       }
       throw error;
     }

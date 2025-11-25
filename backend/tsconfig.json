@@ -3,6 +3,7 @@
     /* Language and Environment */
     "target": "ES2022",
     "lib": ["ES2022"],
+    "types": ["node", "vitest/globals"],
 
     /* Modules */
     "module": "commonjs",
@@ -50,5 +51,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }

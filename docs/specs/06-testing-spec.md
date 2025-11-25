@@ -23,7 +23,7 @@
   - ✓ Validates room exists
   - ✓ Clears room cache after creation
 
-- `bookingService.checkAvailability()`
+- `roomService.checkAvailability()`
   - ✓ Returns true when no conflicts
   - ✓ Returns false when booking exists for dates
   - ✓ Returns false when booking overlaps partially

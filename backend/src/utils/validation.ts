@@ -20,6 +20,7 @@ export const objectIdSchema = z.string().regex(
  * Validates ISO8601 date string format
  */
 export const iso8601DateSchema = z.string().datetime({
+  offset: true,
   message: 'Invalid ISO8601 date format'
 });
 

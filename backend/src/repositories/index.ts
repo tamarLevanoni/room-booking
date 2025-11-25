@@ -5,6 +5,6 @@
  * Import repositories from here for consistency.
  */
 
-export { UserRepository, userRepository } from './UserRepository';
-export { RoomRepository, roomRepository } from './RoomRepository';
-export { BookingRepository, bookingRepository } from './BookingRepository';
+export { userRepository } from './UserRepository';
+export {roomRepository } from './RoomRepository';
+export { bookingRepository } from './BookingRepository';

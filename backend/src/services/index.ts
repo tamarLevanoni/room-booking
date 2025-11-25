@@ -5,6 +5,6 @@
  * Import services from here for consistency.
  */
 
-export { AuthService, authService } from './authService';
-export { BookingService, bookingService } from './bookingService';
-export { RoomService, roomService } from './roomService';
+export { authService } from './authService';
+export { bookingService } from './bookingService';
+export { roomService } from './roomService';

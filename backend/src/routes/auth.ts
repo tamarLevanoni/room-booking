@@ -5,10 +5,8 @@ import { authLimiter } from '../middleware';
 import {
   registerSchema,
   loginSchema,
-  refreshTokenSchema,
   RegisterInput,
-  LoginInput,
-  RefreshTokenInput
+  LoginInput
 } from '../utils/validationSchemas';
 
 const router = Router();
@@ -49,6 +47,8 @@ router.post(
  * POST /api/auth/login
  * Login user and return tokens
  * Access: Public
+ *
+ * Security: Refresh token is stored in httpOnly cookie
  */
 router.post(
   '/login',
@@ -59,9 +59,21 @@ router.post(
       const { email, password } = req.body;
       const result = await authService.login(email, password);
 
+      // Set refresh token in httpOnly cookie
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      // Return only access token and user data (NOT refresh token)
       res.status(200).json({
         success: true,
-        data: result
+        data: {
+          user: result.user,
+          accessToken: result.accessToken,
+        }
       });
     } catch (error) {
       next(error);
@@ -71,16 +83,26 @@ router.post(
 
 /**
  * POST /api/auth/refresh
- * Refresh access token using refresh token
+ * Refresh access token using refresh token from httpOnly cookie
  * Access: Public
  */
 router.post(
   '/refresh',
   authLimiter,
-  validateBody(refreshTokenSchema),
-  async (req: Request<{}, {}, RefreshTokenInput>, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = req.cookies.refreshToken;
+
+      if (!refreshToken) {
+        res.status(401).json({
+          success: false,
+          error: {
+            message: 'Refresh token not found',
+          }
+        });
+        return;
+      }
+
       const accessToken = await authService.refreshAccessToken(refreshToken);
 
       res.status(200).json({
@@ -90,6 +112,30 @@ router.post(
     } catch (error) {
       next(error);
     }
+  }
+);
+
+/**
+ * POST /api/auth/logout
+ * Logout user by clearing refresh token cookie
+ * Access: Public
+ */
+router.post(
+  '/logout',
+  async (_req: Request, res: Response) => {
+    // Clear refresh token cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Logged out successfully'
+      }
+    });
   }
 );
 

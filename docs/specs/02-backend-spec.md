@@ -46,18 +46,16 @@ utils/         → Helpers, validators
 
 ### Room Endpoints
 
-**GET /api/rooms**
-- Access: Public
-- Input: Query params: `{ limit?, offset? }`
-- Output: `{ success: true, data: { rooms: Room[] } }`
-- Notes: Cache for 5 minutes in Redis
-
 **GET /api/rooms/search**
 - Access: Public
-- Input: Query params: `{ city?, country?, capacity?, start?, end? }`
+- Input: Query params: `{ city?, country?, capacity?, limit?, offset? }`
 - Output: `{ success: true, data: { rooms: Room[] } }`
-- Notes: Filtering done in-memory on cached room list. No availability returned. All filters are optional.
-- Validation: If start/end provided, validate startDate < endDate
+- Notes:
+  - **Current strategy (< 10K rooms):** Caches all rooms in 'rooms:all' for 5 minutes, filters in-memory, applies pagination
+  - **Default pagination:** limit=5 (DEFAULT_PAGE_SIZE env), max=100 (MAX_PAGE_SIZE env)
+  - **Future optimization (10K+ rooms):** Move to DB filtering with indexes, cache per filter combination
+  - All filters optional
+- Validation: None required (all optional params)
 
 **GET /api/rooms/:id**
 - Access: Public
@@ -102,22 +100,23 @@ utils/         → Helpers, validators
 5. Return is_available: true
 ```
 
-### Booking Creation (Atomic Operation)
+### Booking Creation (Transaction-Based)
 ```
 1. Verify room exists
-2. Use findOneAndUpdate with upsert:
-   - Query: roomId + status='CONFIRMED' + NO overlap exists
-   - Update: $setOnInsert with booking details
-   - Options: upsert=true
-3. If operation succeeds → booking created
-4. If no document returned → conflict exists, return 409
+2. Start MongoDB transaction
+3. Within transaction:
+   - Check for overlapping bookings with status='CONFIRMED'
+   - If overlap found → return null → 409
+   - If no overlap → create booking
+4. Commit transaction
 5. Return booking
 ```
 
 **Atomicity Guarantee:**
-- MongoDB's findOneAndUpdate is atomic
-- Only one operation succeeds when multiple requests overlap
-- No race conditions possible
+- MongoDB transactions provide ACID guarantees
+- Read and write are isolated within transaction
+- Concurrent requests each see consistent snapshot
+- Zero race conditions
 
 ### Overlap Detection (MongoDB Query)
 ```javascript
@@ -221,69 +220,66 @@ db.bookings.createIndex({ roomId: 1, startDate: 1, endDate: 1 }, { unique: true 
 
 ## 2.6 Concurrency
 
-**Atomic Booking Logic (Recommended)**
+**Transaction-Based Booking Logic**
 
-Booking creation uses a single atomic conditional operation that guarantees only one booking can succeed when two requests overlap.
+Booking creation uses MongoDB transactions to ensure the check and insert happen atomically with zero race conditions.
+
+**Requirements:**
+- MongoDB Replica Set or standalone with replica set mode
+- MongoDB 4.0 or higher
 
 **Implementation:**
 ```typescript
-// Pseudo code in service
+// In repository
 async function createBooking(userId, roomId, startDate, endDate) {
-  // First, verify room exists
-  const room = await Room.findById(roomId);
-  if (!room) throw NotFoundError;
+  const session = await mongoose.startSession();
 
-  // Search for overlapping booking and create atomically
-  const result = await Booking.findOneAndUpdate(
-    {
-      roomId,
-      status: 'CONFIRMED',
-      // Check if NO overlapping booking exists
-      $nor: [
-        { startDate: { $lt: endDate }, endDate: { $gt: startDate } }
-      ]
-    },
-    {
-      $setOnInsert: {
+  try {
+    const result = await session.withTransaction(async () => {
+      // Check for overlapping bookings within transaction
+      const overlapping = await Booking.find({
+        roomId,
+        status: 'CONFIRMED',
+        $or: [
+          { startDate: { $lt: endDate }, endDate: { $gt: startDate } }
+        ]
+      }).session(session);
+
+      if (overlapping.length > 0) {
+        // Conflict detected
+        return null;
+      }
+
+      // Create booking within transaction
+      const [booking] = await Booking.create([{
         userId,
         roomId,
         startDate,
         endDate,
         status: 'CONFIRMED',
-        version: 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    },
-    {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true
-    }
-  );
+        version: 1
+      }], { session });
 
-  // If no document was found/created, conflict exists
-  if (!result) {
-    throw ConflictError('Room already booked for selected dates');
+      return booking;
+    });
+
+    return result;
+  } finally {
+    session.endSession();
   }
-
-  return result;
 }
 ```
 
 **How It Works:**
-1. Search for overlapping bookings: `startDate < requestedEnd AND endDate > requestedStart`
-2. If no conflict exists, create booking using `upsert: true`
-3. MongoDB guarantees atomicity - only one operation succeeds
-4. No need for replica set or transactions
+1. Start MongoDB transaction
+2. Check for overlapping bookings: `startDate < requestedEnd AND endDate > requestedStart`
+3. If overlap exists, return null (no commit needed)
+4. If no overlap, create booking in same transaction
+5. Transaction commits atomically - both read and write are isolated
+6. Zero race conditions - MongoDB guarantees ACID
 
-**Expected Behavior on Conflict:**
-- First atomic update succeeds
-- Second receives conflict response
-- Client displays "Room no longer available"
-
-**Optimistic Locking (Optional Enhancement):**
-- Use `version` field
-- Increment on update with `$inc`
-- Helpful for updates, not required for booking creation
+**Expected Behavior:**
+- First request: checks, finds no overlap, creates booking, commits
+- Second concurrent request: checks within its transaction, sees committed booking, returns null → 409
+- Client displays "Room already booked for selected dates"
 

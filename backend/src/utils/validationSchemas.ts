@@ -40,27 +40,13 @@ export const refreshTokenSchema = z.object({
 // Room Schemas
 // ========================================
 
-export const getRoomsQuerySchema = z.object({
-  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
-  offset: z.string().regex(/^\d+$/).transform(Number).optional()
-});
-
 export const searchRoomsQuerySchema = z.object({
   city: z.string().optional(),
   country: z.string().optional(),
   capacity: z.string().regex(/^\d+$/).transform(Number).optional(),
-  start: isoDateString.optional(),
-  end: isoDateString.optional()
-}).refine(
-  (data) => {
-    // If both start and end are provided, validate the range
-    if (data.start && data.end) {
-      return new Date(data.start) < new Date(data.end);
-    }
-    return true;
-  },
-  { message: 'start date must be before end date', path: ['start'] }
-);
+  limit: z.string().regex(/^\d+$/).transform(Number).optional(),
+  offset: z.string().regex(/^\d+$/).transform(Number).optional()
+});
 
 export const getRoomParamsSchema = z.object({
   id: objectIdSchema
@@ -73,6 +59,13 @@ export const checkAvailabilityQuerySchema = z.object({
   (data) => new Date(data.startDate) < new Date(data.endDate),
   { message: 'startDate must be before endDate', path: ['startDate'] }
 );
+
+export const createRoomSchema = z.object({
+  name: z.string().min(1, 'Room name is required').trim(),
+  city: z.string().min(1, 'City is required').trim(),
+  country: z.string().min(1, 'Country is required').trim(),
+  capacity: z.number().int('Capacity must be an integer').min(1, 'Capacity must be at least 1')
+});
 
 // ========================================
 // Booking Schemas
@@ -94,8 +87,8 @@ export const createBookingSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
-export type GetRoomsQuery = z.infer<typeof getRoomsQuerySchema>;
 export type SearchRoomsQuery = z.infer<typeof searchRoomsQuerySchema>;
 export type GetRoomParams = z.infer<typeof getRoomParamsSchema>;
 export type CheckAvailabilityQuery = z.infer<typeof checkAvailabilityQuerySchema>;
+export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;

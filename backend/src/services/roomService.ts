@@ -14,22 +14,20 @@ import { cacheHelper } from '../utils/cacheHelper';
  */
 export class RoomService {
   private readonly CACHE_TTL = 300; // 5 minutes
-  private readonly CACHE_KEY_ALL = 'rooms:all';
   private readonly CACHE_KEY_PREFIX = 'room:';
+  // Pagination configuration
+  private readonly DEFAULT_LIMIT = parseInt(process.env.DEFAULT_PAGE_SIZE || '5', 10);
+  private readonly MAX_LIMIT = parseInt(process.env.MAX_PAGE_SIZE || '100', 10);
 
   /**
-   * Get all rooms with optional pagination
+   * Get all rooms (cached)
    * Results are cached for 5 minutes
+   * Used internally by searchRooms for in-memory filtering
    *
-   * @param limit - Maximum number of rooms to return (optional)
-   * @param offset - Number of rooms to skip (optional)
-   * @returns Array of rooms
+   * @returns Array of all rooms
    */
-  async getAllRooms(limit?: number, offset?: number): Promise<IRoom[]> {
-    // Build cache key that includes pagination params
-    const cacheKey = limit !== undefined || offset !== undefined
-      ? `${this.CACHE_KEY_ALL}:${limit ?? 'all'}:${offset ?? 0}`
-      : this.CACHE_KEY_ALL;
+  async getAllRooms(): Promise<IRoom[]> {
+    const cacheKey = 'rooms:all';
 
     // Try to get from cache
     const cached = await cacheHelper.get<IRoom[]>(cacheKey);
@@ -37,8 +35,8 @@ export class RoomService {
       return cached;
     }
 
-    // Fetch from database
-    const rooms = await roomRepository.findAll(limit, offset);
+    // Fetch all rooms from database
+    const rooms = await roomRepository.findAll();
 
     // Cache the result
     await cacheHelper.set(cacheKey, rooms, this.CACHE_TTL);
@@ -79,62 +77,43 @@ export class RoomService {
   }
 
   /**
-   * Search rooms with filters
-   * Filters are applied in-memory on the cached room list as per spec
+   * Search rooms with filters and pagination
+   *
+   * Current strategy (optimized for small-medium scale):
+   * - Caches all rooms in single key 'rooms:all'
+   * - Filters applied in-memory (fast for < 10K rooms)
+   * - Pagination applied after filtering
+   *
+   * Future optimization for scale (10K+ rooms):
+   * - Move to DB filtering with indexes
+   * - Cache per filter combination
    *
    * @param filters - Search filters
-   * @param filters.city - Filter by city (optional)
-   * @param filters.country - Filter by country (optional)
-   * @param filters.capacity - Filter by minimum capacity (optional)
-   * @param filters.start - Start date for validation (optional)
-   * @param filters.end - End date for validation (optional)
-   * @returns Array of rooms matching the filters
-   * @throws 400 error if startDate >= endDate
+   * @returns Paginated array of rooms matching the filters
    */
   async searchRooms(filters: {
     city?: string;
     country?: string;
     capacity?: number;
-    start?: string;
-    end?: string;
+    limit?: number;
+    offset?: number;
   }): Promise<IRoom[]> {
-    // Validate dates if provided
-    if (filters.start && filters.end) {
-      const startDate = new Date(filters.start);
-      const endDate = new Date(filters.end);
-
-      if (startDate >= endDate) {
-        const error = new Error('Start date must be before end date');
-        (error as any).statusCode = 400;
-        throw error;
-      }
-    }
-
-    // Get all rooms from cache (or fetch if not cached)
+    // Get all rooms from cache
     const allRooms = await this.getAllRooms();
 
     // Filter in-memory
-    let filteredRooms = allRooms;
+    const filtered = allRooms.filter((room) => {
+      if (filters.city && room.city.toLowerCase() !== filters.city.toLowerCase()) return false;
+      if (filters.country && room.country.toLowerCase() !== filters.country.toLowerCase()) return false;
+      if (filters.capacity && room.capacity < filters.capacity) return false;
+      return true;
+    });
 
-    if (filters.city) {
-      filteredRooms = filteredRooms.filter(
-        (room) => room.city.toLowerCase() === filters.city!.toLowerCase()
-      );
-    }
+    // Apply pagination
+    const limit = Math.min(filters.limit ?? this.DEFAULT_LIMIT, this.MAX_LIMIT);
+    const offset = filters.offset ?? 0;
 
-    if (filters.country) {
-      filteredRooms = filteredRooms.filter(
-        (room) => room.country.toLowerCase() === filters.country!.toLowerCase()
-      );
-    }
-
-    if (filters.capacity !== undefined) {
-      filteredRooms = filteredRooms.filter(
-        (room) => room.capacity >= filters.capacity!
-      );
-    }
-
-    return filteredRooms;
+    return filtered.slice(offset, offset + limit);
   }
 
   /**
@@ -181,6 +160,28 @@ export class RoomService {
     return {
       is_available: overlappingBookings.length === 0,
     };
+  }
+
+  /**
+   * Create a new room
+   * Invalidates room list cache after creation
+   *
+   * @param roomData - Room creation data
+   * @returns Created room document
+   */
+  async createRoom(roomData: {
+    name: string;
+    city: string;
+    country: string;
+    capacity: number;
+  }): Promise<IRoom> {
+    // Create the room
+    const room = await roomRepository.create(roomData);
+
+    // Invalidate cache for room list
+    await cacheHelper.del('rooms:all');
+
+    return room;
   }
 }
 

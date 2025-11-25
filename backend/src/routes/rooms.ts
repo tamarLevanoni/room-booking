@@ -1,35 +1,36 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { roomService } from '../services';
-import { validateQuery, validateParams } from '../middleware';
+import { validateQuery, validateParams, validateBody, authenticate } from '../middleware';
 import {
-  getRoomsQuerySchema,
   searchRoomsQuerySchema,
   getRoomParamsSchema,
   checkAvailabilityQuerySchema,
-  GetRoomsQuery,
+  createRoomSchema,
   SearchRoomsQuery,
   GetRoomParams,
-  CheckAvailabilityQuery
+  CheckAvailabilityQuery,
+  CreateRoomInput
 } from '../utils/validationSchemas';
 
 const router = Router();
 
 /**
- * GET /api/rooms
- * Get all rooms with optional pagination
- * Access: Public
+ * POST /api/rooms
+ * Create a new room
+ * Access: Authenticated users only
  */
-router.get(
+router.post(
   '/',
-  validateQuery(getRoomsQuerySchema),
-  async (req: Request<{}, {}, {}, GetRoomsQuery>, res: Response, next: NextFunction) => {
+  authenticate,
+  validateBody(createRoomSchema),
+  async (req: Request<{}, {}, CreateRoomInput>, res: Response, next: NextFunction) => {
     try {
-      const { limit, offset } = req.query;
-      const rooms = await roomService.getAllRooms(limit, offset);
+      const roomData = req.body;
+      const room = await roomService.createRoom(roomData);
 
-      res.status(200).json({
+      res.status(201).json({
         success: true,
-        data: { rooms }
+        data: { room }
       });
     } catch (error) {
       next(error);
@@ -39,8 +40,11 @@ router.get(
 
 /**
  * GET /api/rooms/search
- * Search rooms with filters
+ * Search rooms with filters and pagination
  * Access: Public
+ *
+ * Note: This is the primary endpoint for listing rooms.
+ * Use filters to narrow results, pagination for large datasets.
  */
 router.get(
   '/search',
@@ -90,6 +94,7 @@ router.get(
  */
 router.get(
   '/:id/availability',
+  authenticate,
   validateParams(getRoomParamsSchema),
   validateQuery(checkAvailabilityQuerySchema),
   async (

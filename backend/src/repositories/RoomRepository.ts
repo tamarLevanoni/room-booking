@@ -38,25 +38,23 @@ export class RoomRepository {
   }
 
   /**
-   * Search rooms with optional filters
+   * Search rooms with filters and pagination
    * @param filters - Search filters
    * @param filters.city - Filter by city (optional)
    * @param filters.country - Filter by country (optional)
    * @param filters.capacity - Filter by minimum capacity (optional)
-   * @param filters.start - Start date for availability check (not used in DB query - for reference)
-   * @param filters.end - End date for availability check (not used in DB query - for reference)
+   * @param filters.limit - Maximum number of rooms to return (optional)
+   * @param filters.offset - Number of rooms to skip (optional)
    * @returns Array of room documents matching the filters
    *
-   * Note: start and end date parameters are included for API compatibility
-   * but are not used in the database query. Availability filtering should be
-   * done in-memory or via a separate availability check.
+   * Uses MongoDB indexes on city+country for fast geographic filtering
    */
   async search(filters: {
     city?: string;
     country?: string;
     capacity?: number;
-    start?: Date;
-    end?: Date;
+    limit?: number;
+    offset?: number;
   }): Promise<IRoom[]> {
     const query: Record<string, unknown> = {};
 
@@ -72,7 +70,32 @@ export class RoomRepository {
       query.capacity = { $gte: filters.capacity };
     }
 
-    return Room.find(query).exec();
+    let dbQuery = Room.find(query);
+
+    if (filters.offset !== undefined) {
+      dbQuery = dbQuery.skip(filters.offset);
+    }
+
+    if (filters.limit !== undefined) {
+      dbQuery = dbQuery.limit(filters.limit);
+    }
+
+    return dbQuery.exec();
+  }
+
+  /**
+   * Create a new room
+   * @param roomData - Room creation data
+   * @returns Created room document
+   */
+  async create(roomData: {
+    name: string;
+    city: string;
+    country: string;
+    capacity: number;
+  }): Promise<IRoom> {
+    const room = new Room(roomData);
+    return room.save();
   }
 }
 
