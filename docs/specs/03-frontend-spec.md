@@ -29,7 +29,7 @@ frontend/
 
 ### Home / Room List (`/`)
 - Grid/List of all rooms
-- Search filters: city, country, capacity, date range (start/end)
+- Search filters: city, country, capacity
 - Each room card shows: name, city, country, capacity
 - Click → navigate to `/rooms/:id`
 - Login/Register buttons in header if not authenticated
@@ -37,7 +37,7 @@ frontend/
 
 ### Room Details (`/rooms/:id`)
 - Room info: name, city, country, capacity
-- Date range picker (start date, end date)
+- Date range picker (start date, end date) (opened on press 'choose start date'...)
 - "Check Availability" button
 - If available → "Book Now" button (requires authentication)
 - If not available → show "Not available for selected dates"
@@ -181,25 +181,13 @@ frontend/
 ## 3.5 UI Style Guide
 
 **Component Library:**
-- shadcn/ui (Radix UI primitives + Tailwind)
+- shadcn/ui (Radix UI + Tailwind)
 - Use components: Button, Card, Input, Calendar, Dialog, Toast
 
-**Typography:**
-- Font: Inter or system font stack
-- Headings: font-semibold, sizes: 2xl/xl/lg
-- Body: text-base, line-height relaxed
-- Labels: text-sm, font-medium
-
-**Buttons:**
-- Primary: bg-blue-600, hover:bg-blue-700, text-white
-- Secondary: border-gray-300, hover:bg-gray-50
-- Disabled: opacity-50, cursor-not-allowed
-- Sizes: sm (px-3 py-1.5), md (px-4 py-2), lg (px-6 py-3)
 
 **Forms:**
 - Labels above inputs
 - Error messages below inputs (text-red-600, text-sm)
-- Focus state: ring-2 ring-blue-500
 - Validation on blur + submit
 
 **Colors:**
@@ -210,15 +198,10 @@ frontend/
 - Background: white
 - Border: gray-200
 
-**Layout:**
-- Max width: 1280px (container)
-- Padding: px-4 sm:px-6 lg:px-8
-- Gap between elements: space-y-4 / space-y-6
 
 **Responsive:**
 - Mobile-first approach
 - Breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)
-- Room grid: 1 col mobile, 2 cols tablet, 3 cols desktop
 - Navigation: hamburger menu on mobile
 
 **Accessibility:**
