@@ -62,7 +62,7 @@ const RoomDetails = () => {
   const handleBookNow = () => {
     if (!isAuthenticated) {
       toast.error("Please login to book a room");
-      navigate("/login");
+      useAuthStore.getState().openLoginModal();
       return;
     }
     setShowBookingModal(true);

@@ -7,5 +7,8 @@ export * from './layout';
 // UI Components (includes primitives, forms, and feedback)
 export * from './ui';
 
+// Auth Components
+export * from './auth';
+
 // Feature-Specific Components
 export * from './rooms';

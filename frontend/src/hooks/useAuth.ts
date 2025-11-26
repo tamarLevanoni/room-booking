@@ -6,7 +6,6 @@ import type { LoginRequest, RegisterRequest } from '../types';
 import toast from 'react-hot-toast';
 
 export const useLogin = () => {
-  const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
   return useMutation({
@@ -16,7 +15,6 @@ export const useLogin = () => {
         const { user, accessToken } = response.data;
         login(user, accessToken);
         toast.success('Login successful!');
-        navigate('/');
       } else {
         toast.error(response.error?.message || 'Login failed');
       }
@@ -29,14 +27,11 @@ export const useLogin = () => {
 };
 
 export const useRegister = () => {
-  const navigate = useNavigate();
-
   return useMutation({
     mutationFn: (data: RegisterRequest) => authApi.register(data),
     onSuccess: (response) => {
       if (response.success) {
         toast.success('Registration successful! Please login.');
-        navigate('/login');
       } else {
         toast.error(response.error?.message || 'Registration failed');
       }

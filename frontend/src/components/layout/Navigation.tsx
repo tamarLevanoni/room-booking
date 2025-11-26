@@ -5,7 +5,7 @@ import { LogOut, User } from 'lucide-react';
 
 export const Navigation = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user, logout, openLoginModal, openRegisterModal } = useAuthStore();
 
   const handleLogout = () => {
     logout();
@@ -37,13 +37,13 @@ export const Navigation = () => {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => navigate('/login')}
+        onClick={openLoginModal}
       >
         Login
       </Button>
       <Button
         size="sm"
-        onClick={() => navigate('/register')}
+        onClick={openRegisterModal}
       >
         Register
       </Button>
