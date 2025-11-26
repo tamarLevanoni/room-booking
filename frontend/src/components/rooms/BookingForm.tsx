@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, CheckCircle, XCircle } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "../ui";
-import toast from "react-hot-toast";
 
 interface BookingFormProps {
   onCheckAvailability: (start: string, end: string) => void;
@@ -10,6 +9,7 @@ interface BookingFormProps {
   isAvailable: boolean | undefined;
   availabilityChecked: boolean;
   checkingAvailability: boolean;
+  setAvailabilityChecked: (availabilityChecked:boolean) => void;
 }
 
 export const BookingForm = ({
@@ -18,11 +18,13 @@ export const BookingForm = ({
   isAvailable,
   availabilityChecked,
   checkingAvailability,
+  setAvailabilityChecked
 }: BookingFormProps) => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [startTime, setStartTime] = useState<string>("09:00");
   const [endTime, setEndTime] = useState<string>("17:00");
+  const [validationError, setValidationError] = useState<string>("");
 
   // Generate time options (every 30 minutes)
   const timeOptions = Array.from({ length: 48 }, (_, i) => {
@@ -32,13 +34,25 @@ export const BookingForm = ({
   });
 
   const validateDates = (): boolean => {
+    setAvailabilityChecked(false);
+    setValidationError("");
+
     if (!startDate || !endDate) {
-      toast.error("Please select both start and end dates");
+      setValidationError("Please select both start and end dates");
+      return false;
+    }
+
+    // Check if start date/time is in the past
+    const now = new Date();
+    const startDateTime = new Date(`${format(startDate, "yyyy-MM-dd")}T${startTime}:00`);
+
+    if (startDateTime < now) {
+      setValidationError("Start date and time cannot be in the past");
       return false;
     }
 
     if (endDate < startDate) {
-      toast.error("End date must be after start date");
+      setValidationError("End date must be after start date");
       return false;
     }
 
@@ -46,7 +60,7 @@ export const BookingForm = ({
       startDate.toDateString() === endDate.toDateString() &&
       endTime <= startTime
     ) {
-      toast.error("End time must be after start time");
+      setValidationError("End time must be after start time");
       return false;
     }
 
@@ -79,17 +93,23 @@ export const BookingForm = ({
             <input
               type="date"
               value={startDate ? format(startDate, "yyyy-MM-dd") : ""}
-              onChange={(e) =>
+              onChange={(e) => {
                 setStartDate(
                   e.target.value ? new Date(e.target.value) : undefined
-                )
-              }
+                );
+                setValidationError("");
+                setAvailabilityChecked(false);
+              }}
               min={format(new Date(), "yyyy-MM-dd")}
               className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
             <select
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => {
+                setStartTime(e.target.value);
+                setValidationError("");
+                setAvailabilityChecked(false);
+              }}
               className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               {timeOptions.map((time) => (
@@ -110,11 +130,13 @@ export const BookingForm = ({
             <input
               type="date"
               value={endDate ? format(endDate, "yyyy-MM-dd") : ""}
-              onChange={(e) =>
+              onChange={(e) => {
                 setEndDate(
                   e.target.value ? new Date(e.target.value) : undefined
-                )
-              }
+                );
+                setValidationError("");
+                setAvailabilityChecked(false);
+              }}
               min={
                 startDate
                   ? format(startDate, "yyyy-MM-dd")
@@ -124,7 +146,11 @@ export const BookingForm = ({
             />
             <select
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => {
+                setEndTime(e.target.value);
+                setValidationError("");
+                setAvailabilityChecked(false);
+              }}
               className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               {timeOptions.map((time) => (
@@ -136,6 +162,14 @@ export const BookingForm = ({
           </div>
         </div>
       </div>
+
+      {/* Validation Error Display */}
+      {validationError && (
+        <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span className="text-sm font-medium">{validationError}</span>
+        </div>
+      )}
 
       {/* Check Availability Button */}
       <Button

@@ -42,6 +42,7 @@ const RoomDetails = () => {
     useCreateBooking();
 
   const handleCheckAvailability = (start: string, end: string) => {
+
     setStartDateTime(start);
     setEndDateTime(end);
 
@@ -159,6 +160,7 @@ const RoomDetails = () => {
             isAvailable={isAvailable}
             availabilityChecked={availabilityChecked}
             checkingAvailability={checkingAvailability}
+            setAvailabilityChecked={setAvailabilityChecked}
           />
         </div>
       </Card>

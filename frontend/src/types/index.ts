@@ -59,6 +59,8 @@ export interface RefreshTokenResponse {
 // Room API responses
 export interface RoomsResponse {
   rooms: Room[];
+  hasMore: boolean;
+  nextOffset?: number;
 }
 
 export interface RoomResponse {
@@ -79,8 +81,8 @@ export interface RoomSearchFilters {
   city?: string;
   country?: string;
   capacity?: number;
-  start?: string;
-  end?: string;
+  offset?: number;
+  limit?: number;
 }
 
 // Auth request types

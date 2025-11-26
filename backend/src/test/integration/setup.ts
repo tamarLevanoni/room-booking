@@ -24,7 +24,7 @@ vi.mock("../../utils/redisClient", () => {
       store.set(key, value);
       return "OK";
     }),
-    setEx: vi.fn(async (key: string, seconds: number, value: string) => {
+    setEx: vi.fn(async (key: string, _seconds: number, value: string) => {
       store.set(key, value);
       return "OK";
     }),

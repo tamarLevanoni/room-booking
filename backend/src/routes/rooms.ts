@@ -52,11 +52,11 @@ router.get(
   async (req: Request<{}, {}, {}, SearchRoomsQuery>, res: Response, next: NextFunction) => {
     try {
       const filters = req.query;
-      const rooms = await roomService.searchRooms(filters);
+      const result = await roomService.searchRooms(filters);
 
       res.status(200).json({
         success: true,
-        data: { rooms }
+        data: result
       });
     } catch (error) {
       next(error);

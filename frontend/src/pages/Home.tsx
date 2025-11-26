@@ -1,21 +1,30 @@
 import { useState } from 'react';
 import { useRoomSearch } from '../hooks/useRooms';
 import { RoomCard, RoomCardSkeleton, RoomGrid, Button, Input, ErrorMessage, EmptyState } from '../components';
-import { Search, X, Building2 } from 'lucide-react';
+import { Search, X, Building2, ChevronDown } from 'lucide-react';
 import type { RoomSearchFilters } from '../types';
 
 const Home = () => {
-  const [filters, setFilters] = useState<RoomSearchFilters>({});
+  const [filters, setFilters] = useState<Omit<RoomSearchFilters, 'offset' | 'limit'>>({});
   const [tempFilters, setTempFilters] = useState({
     city: '',
     country: '',
     capacity: '',
   });
 
-  const { data: rooms, isLoading, error } = useRoomSearch(filters);
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRoomSearch(filters);
+
+  const rooms = data?.pages.flatMap((page) => page.rooms) ?? [];
 
   const handleSearch = () => {
-    const newFilters: RoomSearchFilters = {};
+    const newFilters: Omit<RoomSearchFilters, 'offset' | 'limit'> = {};
 
     if (tempFilters.city.trim()) {
       newFilters.city = tempFilters.city.trim();
@@ -187,20 +196,33 @@ const Home = () => {
         {/* Rooms Grid */}
         {!isLoading && !error && rooms && rooms.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">
-                Available Rooms
-                <span className="text-gray-500 text-lg ml-2">
-                  ({rooms.length} {rooms.length === 1 ? 'room' : 'rooms'})
-                </span>
-              </h2>
-            </div>
 
             <RoomGrid>
               {rooms.map((room) => (
                 <RoomCard key={room._id} room={room} />
               ))}
             </RoomGrid>
+
+            {/* Load More Button */}
+            {hasNextPage && (
+              <div className="flex justify-center mt-8">
+                <Button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  {isFetchingNextPage ? (
+                    'Loading...'
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      Load More Results
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,9 +1,10 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
+// Load environment variables FIRST, before any other imports
+dotenv.config();
+
+import mongoose from "mongoose";
 import { connectRedis } from "./utils/redisClient";
 import app from "./app";
-
-dotenv.config();
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 

@@ -89,7 +89,7 @@ export class RoomService {
    * - Cache per filter combination
    *
    * @param filters - Search filters
-   * @returns Paginated array of rooms matching the filters
+   * @returns Paginated rooms with hasMore flag
    */
   async searchRooms(filters: {
     city?: string;
@@ -97,7 +97,7 @@ export class RoomService {
     capacity?: number;
     limit?: number;
     offset?: number;
-  }): Promise<IRoom[]> {
+  }): Promise<{ rooms: IRoom[]; hasMore: boolean; nextOffset?: number }> {
     // Get all rooms from cache
     const allRooms = await this.getAllRooms();
 
@@ -112,8 +112,12 @@ export class RoomService {
     // Apply pagination
     const limit = Math.min(filters.limit ?? this.DEFAULT_LIMIT, this.MAX_LIMIT);
     const offset = filters.offset ?? 0;
+    const totalCount = filtered.length;
+    const rooms = filtered.slice(offset, offset + limit);
+    const hasMore = offset + limit < totalCount;
+    const nextOffset = hasMore ? offset + limit : undefined;
 
-    return filtered.slice(offset, offset + limit);
+    return { rooms, hasMore, nextOffset };
   }
 
   /**
