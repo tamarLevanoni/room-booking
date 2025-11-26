@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useRegister } from '../hooks/useAuth';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card } from '../components/ui/card';
+import { Button, Input, Card } from '../components';
 import { Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 

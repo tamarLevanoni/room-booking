@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLogin } from '../hooks/useAuth';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card } from '../components/ui/card';
-import { Building2 } from 'lucide-react';
+import { Button, Input, Card, FormField, FormGroup, FormActions } from '../components';
+import { Building2, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();

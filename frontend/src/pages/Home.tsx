@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { useRoomSearch } from '../hooks/useRooms';
-import { RoomCard } from '../components/RoomCard';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Skeleton } from '../components/ui/skeleton';
-import { Search, X } from 'lucide-react';
+import { RoomCard, RoomCardSkeleton, RoomGrid, Button, Input, ErrorMessage, EmptyState } from '../components';
+import { Search, X, Building2 } from 'lucide-react';
 import type { RoomSearchFilters } from '../types';
 
 const Home = () => {
@@ -158,45 +155,33 @@ const Home = () => {
         {isLoading && (
           <div>
             <p className="text-gray-600 mb-4">Loading available rooms...</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <RoomGrid>
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="space-y-4">
-                  <Skeleton className="h-48 w-full rounded-lg" />
-                </div>
+                <RoomCardSkeleton key={i} />
               ))}
-            </div>
+            </RoomGrid>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="text-center py-12">
-            <p className="text-red-600 mb-4">
-              Failed to load rooms. Please try again.
-            </p>
-            <Button onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          </div>
+          <ErrorMessage
+            message="Failed to load rooms. Please try again."
+            onRetry={() => window.location.reload()}
+          />
         )}
 
         {/* Empty State */}
         {!isLoading && !error && rooms && rooms.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg mb-2">
-              {hasActiveFilters
-                ? 'No rooms found matching your criteria'
-                : 'No rooms available at the moment'}
-            </p>
-            <p className="text-gray-500 text-sm mb-4">
-              {hasActiveFilters && 'Try adjusting your search filters'}
-            </p>
-            {hasActiveFilters && (
-              <Button variant="outline" onClick={handleClearFilters}>
-                Clear All Filters
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            icon={<Building2 className="h-8 w-8 text-gray-400" />}
+            title={hasActiveFilters ? 'No rooms found' : 'No rooms available'}
+            message={hasActiveFilters ? 'Try adjusting your search filters' : 'Check back later for available rooms'}
+            action={hasActiveFilters ? {
+              label: 'Clear All Filters',
+              onClick: handleClearFilters
+            } : undefined}
+          />
         )}
 
         {/* Rooms Grid */}
@@ -211,11 +196,11 @@ const Home = () => {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <RoomGrid>
               {rooms.map((room) => (
                 <RoomCard key={room._id} room={room} />
               ))}
-            </div>
+            </RoomGrid>
           </div>
         )}
       </div>

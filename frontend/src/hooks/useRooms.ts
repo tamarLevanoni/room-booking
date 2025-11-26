@@ -42,7 +42,7 @@ export const useRoomAvailability = (roomId: string, startDate: string, endDate: 
       }
       return response.data.is_available;
     },
-    enabled: !!roomId && !!startDate && !!endDate,
+    enabled: false, // Only run when explicitly called via refetch
     staleTime: 0, // Always fresh
   });
 };
