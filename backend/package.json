@@ -2,12 +2,12 @@
   "name": "room-booking-backend",
   "version": "1.0.0",
   "description": "Room Booking System Backend API",
-  "main": "dist/index.js",
+  "main": "dist/server.ts",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon --exec tsx src/index.ts",
+    "dev": "nodemon --exec tsx src/server.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/server.ts",
     "test": "vitest",
     "seed": "tsx src/scripts/seedRooms.ts",
     "test:coverage": "vitest --coverage"

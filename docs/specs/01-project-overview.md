@@ -51,9 +51,10 @@ Registration → Login → Browse Rooms → Check Availability → Book
 - Fixed rooms in data (seed/migration)
 - No room management through UI
 
-**Booking Times:**
-- Check-in: 15:00
-- Check-out: 11:00
+**Booking Schedule:**
+- Hourly booking system with 30-minute increments (00:00, 00:30, 01:00, etc.)
+- 24/7 availability - rooms can be booked at any time
+- Same-day bookings allowed with immediate start times
 
 **Booking Rules:**
 - Bookings are automatically approved

@@ -129,15 +129,15 @@ frontend/
 ## 3.4 UI Behavior
 
 ### Home Page Search Flow
-1. User sees all rooms on load
-2. User applies filters (city, country, capacity, dates)
-3. Frontend calls GET /api/rooms/search with filters
+1. User sees all rooms on load with pagination, limit=5
+2. User applies filters (city, country, capacity)
+3. Frontend calls GET /api/rooms/search with filters and limit
 4. Show loading state while fetching
 5. Display filtered room list
 6. Click room card → navigate to `/rooms/:id`
 
 ### Room Details - Availability Check Flow
-1. User selects start date and end date
+1. User selects start date and end date (calander open in click)
 2. Frontend validates: endDate > startDate, startDate >= today
 3. User clicks "Check Availability"
 4. Frontend calls GET /api/rooms/:id/availability

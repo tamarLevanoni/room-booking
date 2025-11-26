@@ -10,13 +10,42 @@ const app: Application = express();
 // Security middleware
 app.use(helmet());
 
-// CORS
+
+// ---- CORS ----
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map(o => o.trim())
+  .filter(Boolean);
+
+console.log("🔒 CORS Configuration:");
+console.log("   Raw ENV:", process.env.CORS_ORIGIN);
+console.log("   Allowed origins:", allowedOrigins);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-    credentials: true,
+    origin: (origin, callback) => {
+      console.log(`📨 CORS request from origin: "${origin}"`);
+
+      // בקשות ללא Origin (Postman / curl / mobile apps)
+      if (!origin) {
+        console.log("   ✅ Allowed: no origin");
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        console.log(`   ✅ Allowed origin: ${origin}`);
+        return callback(null, true);  // <-- הנקודה הקריטית! לא origin
+      }
+
+      console.log(`   ❌ Rejected origin: ${origin}`);
+      console.log(`   Allowed origins: ${allowedOrigins.join(", ")}`);
+
+      return callback(new Error("Not allowed by CORS"), false);
+    },
+    credentials: true
   })
 );
+
 
 // Body parsers
 app.use(express.json());

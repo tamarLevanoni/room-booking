@@ -5,7 +5,7 @@ import app from "./app";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT ?? "3000", 10);
 
 async function startServer() {
   try {
@@ -23,11 +23,12 @@ async function startServer() {
     console.log("✓ Connected to Redis");
 
     // Start server
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`✓ Server is running on port ${PORT}`);
       console.log(`✓ Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`✓ API available at: http://localhost:${PORT}/api`);
     });
+    
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);

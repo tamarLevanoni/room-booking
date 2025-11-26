@@ -16,6 +16,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "src/components/ui/button.tsx", "src/components/ui/calendar.tsx", "src/components/ui/card.tsx"],
   "exclude": ["node_modules", "dist"]
 }

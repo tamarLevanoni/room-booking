@@ -14,7 +14,6 @@ export const useRoomSearch = (filters: RoomSearchFilters) => {
       return response.data.rooms;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: Object.keys(filters).length > 0,
   });
 };
 

@@ -17,4 +17,4 @@ npm run seed
 
 # Start the application
 echo "Starting application..."
-exec node dist/index.js
+exec node dist/server.js
